@@ -4,7 +4,7 @@
   "description": "React Native Template",
   "repository": "https://github.com/Lavrador99/MyReactNativeTemplate.git",
   "author": "Alexandre Lavrador",
-  "license": "MIT"
+  "license": "MIT",
   "scripts": {
     "android": "react-native run-android",
     "ios": "react-native run-ios",
