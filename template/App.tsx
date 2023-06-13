@@ -1,44 +1,73 @@
-import {NavigationContainer} from '@react-navigation/native';
-import {createNativeStackNavigator} from '@react-navigation/native-stack';
-import React from 'react';
-import {Button, StyleSheet, Text, View} from 'react-native';
+import 'react-native-gesture-handler';
 
-const ProfileScreen = ({navigation}) => {
-  return (
-    <View style={styles.container}>
-      <Text>Welcome to the Profile Screen!</Text>
-      <Button
-        title="Go to Home Screen"
-        onPress={() => navigation.navigate('Home')}
-      />
-    </View>
-  );
+import axios from 'axios';
+import React, {useMemo} from 'react';
+import {AppState, StyleSheet} from 'react-native';
+import {SafeAreaProvider} from 'react-native-safe-area-context';
+import {Provider} from 'react-redux';
+import {PersistGate} from 'redux-persist/integration/react';
+import {SWRConfig} from 'swr';
+import RootNavigator from './src/navigation/RootNavigator';
+import {swrFetcher} from './utils/const';
+import {persistor, store} from './utils/redux/store';
+
+const SetAxiosConfig = () => {
+  const {token} = store.getState().auth;
+
+  if (token) {
+    axios.defaults.headers.Authorization = token;
+  }
 };
-
-const HomeScreen = ({navigation}) => {
-  return (
-    <View style={styles.container}>
-      <Text>Welcome to React Native Home Screen!</Text>
-      <Button
-        title="Go to Profile Screen"
-        onPress={() => navigation.navigate('Profile')}
-      />
-    </View>
-  );
-};
-
-const Stack = createNativeStackNavigator();
 
 const App = () => {
+  const value = useMemo(
+    () => ({
+      fetcher: swrFetcher,
+      provider: () => new Map(),
+      isVisible: () => {
+        return true;
+      },
+      initFocus(callback: () => void) {
+        let appState = AppState.currentState;
+
+        const onAppStateChange = (nextAppState: any) => {
+          /* If it's resuming from background or inactive mode to active one */
+          if (
+            appState.match(/inactive|background/) &&
+            nextAppState === 'active'
+          ) {
+            callback();
+          }
+          appState = nextAppState;
+        };
+
+        // Subscribe to the app state change events
+        const subscription = AppState.addEventListener(
+          'change',
+          onAppStateChange,
+        );
+
+        return () => {
+          subscription.remove();
+        };
+      },
+    }),
+
+    [],
+  );
   return (
-    <>
-      <NavigationContainer>
-        <Stack.Navigator initialRouteName="Home">
-          <Stack.Screen name="Home" component={HomeScreen} />
-          <Stack.Screen name="Profile" component={ProfileScreen} />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </>
+    <SWRConfig value={value}>
+      <SafeAreaProvider>
+        <Provider store={store}>
+          <PersistGate
+            loading={null}
+            persistor={persistor}
+            onBeforeLift={SetAxiosConfig}>
+            <RootNavigator />
+          </PersistGate>
+        </Provider>
+      </SafeAreaProvider>
+    </SWRConfig>
   );
 };
 
